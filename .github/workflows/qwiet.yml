@@ -1,0 +1,33 @@
+# This workflow integrates Qwiet preZero with GitHub
+# Visit https://docs.shiftleft.io for help
+name: Qwiet
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    # We recommend triggering a scan when merging to your default branch
+    # as a best practice, especially if you'd like to compare the results
+    # of two scans (e.g., a feature branch against the default branch)
+    branches:
+      - main
+      - master
+
+jobs:
+  NextGen-Static-Analysis:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download Qwiet CLI
+      run: |
+        Invoke-WebRequest -Uri 'https://cdn.shiftleft.io/download/sl-latest-windows-x64.zip' -OutFile sl.zip
+        Expand-Archive -Path sl.zip -DestinationPath . -Force
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract_branch
+    - name: Analyze with NextGen Static Analysis
+      run: .\sl analyze --wait --app Test_C_Plus --tag branch=${{ github.head_ref || steps.extract_branch.outputs.branch }} --c --cpg .
+      env:
+        SHIFTLEFT_ACCESS_TOKEN: ${{ secrets.SHIFTLEFT_ACCESS_TOKEN }}
